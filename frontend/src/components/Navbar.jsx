@@ -9,10 +9,8 @@ export default function Navbar() {
         <Link className="hover:underline" to="/">Home</Link>
         <Link className="hover:underline" to="/marketplace">Marketplace</Link>
         <Link className="hover:underline" to="/developer/listings">Developer</Link>
-        <Link className="hover:underline" to="/developer/guide">Dev Guide</Link>
-        <Link className="hover:underline" to="/buyer/guide">Buyer Guide</Link>
         <Link className="px-4 py-2 rounded-xl bg-yellow-400 text-black font-semibold hover:bg-yellow-500 transition" to="/login">
-          Download CLI
+          Login
         </Link>
       </div>
     </nav>
