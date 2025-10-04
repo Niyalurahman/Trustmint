@@ -1,13 +1,12 @@
 package docker
 
 import (
-	// "archive/tar"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"os"
-	// "path/filepath"
+	"path/filepath"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -33,35 +32,53 @@ func RunTrainingContainer(opts TrainOptions) error {
 		return err
 	}
 
-	// Pick image by framework
-	image := "trustmint/train-base:latest"
+	// ✅ Choose correct Docker image
+	image := fmt.Sprintf("trustmint/train-%s:latest", opts.Framework)
 	if opts.Framework == "pytorch" {
 		image = "trustmint/train-pytorch:latest"
 	} else if opts.Framework == "tensorflow" {
-		image = "trustmint/train-tf:latest"
+		image = "trustmint/train-tensorflow:latest"
 	}
 
 	fmt.Println("🚀 Starting training container with image:", image)
 
-	// Ensure output path exists
+	// ✅ Ensure output directory exists
 	if err := os.MkdirAll(opts.OutputPath, 0755); err != nil {
 		return err
 	}
 
-	// Mount dataset + config as read-only, output as writable
+	// ✅ Convert all paths to absolute
+	datasetAbs, err := filepath.Abs(opts.DatasetPath)
+	if err != nil {
+		return fmt.Errorf("invalid dataset path: %v", err)
+	}
+	configAbs, err := filepath.Abs(opts.ConfigPath)
+	if err != nil {
+		return fmt.Errorf("invalid config path: %v", err)
+	}
+	outputAbs, err := filepath.Abs(opts.OutputPath)
+	if err != nil {
+		return fmt.Errorf("invalid output path: %v", err)
+	}
+
+	// ✅ Mount files properly
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:/data:ro", opts.DatasetPath),
-			fmt.Sprintf("%s:/config:ro", opts.ConfigPath),
-			fmt.Sprintf("%s:/output", opts.OutputPath),
+			fmt.Sprintf("%s:/data:ro", datasetAbs),
+			fmt.Sprintf("%s:/config:ro", configAbs),
+			fmt.Sprintf("%s:/output", outputAbs),
 		},
 	}
+
+	// ✅ Handle old containers gracefully
+	containerName := fmt.Sprintf("trustmint-train-%s", opts.ModelName)
+	_ = cli.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{Force: true})
 
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: image,
 		Cmd:   []string{"python", "train.py", "--config", "/config", "--data", "/data", "--output", "/output"},
 		Tty:   false,
-	}, hostConfig, nil, nil, "trustmint-train")
+	}, hostConfig, nil, nil, containerName)
 	if err != nil {
 		return err
 	}
@@ -70,6 +87,7 @@ func RunTrainingContainer(opts TrainOptions) error {
 		return err
 	}
 
+	// ✅ Wait for the container to complete
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
@@ -79,6 +97,7 @@ func RunTrainingContainer(opts TrainOptions) error {
 	case <-statusCh:
 	}
 
+	// ✅ Capture logs
 	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 	if err != nil {
 		return err

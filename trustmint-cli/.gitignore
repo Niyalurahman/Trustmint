@@ -1,0 +1,39 @@
+# Binaries
+/bin/
+/trustmint
+*.exe
+*.dll
+*.so
+
+# Build artifacts
+*.out
+*.log
+
+# Go workspace stuff
+/go.work
+/go.work.sum
+
+# Python caches (from training scripts in docker/)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Datasets / models (user-specific)
+data/
+output/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# IDE/editor configs
+.vscode/
+.idea/
